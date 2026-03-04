@@ -125,20 +125,73 @@ function csvResponse(words, categoryName) {
     .setMimeType(ContentService.MimeType.TEXT);
 }
 
+// Header mapping to maintain compatibility between Chinese UI and English keys
+const HEADER_MAP = {
+  // Users
+  "ID": "id",
+  "使用者名稱": "username",
+  "頭像": "avatar",
+  "建立時間": "created_at",
+  // Words
+  "單字": "word",
+  "音標": "phonetic",
+  "詞性": "pos",
+  "定義": "definition",
+  "例句": "example",
+  "例句翻譯": "example_translation",
+  "例句分段": "example_segments",
+  "分類": "category",
+  "錯誤次數": "error_count",
+  "使用者ID": "user_id",
+  "刪除時間": "deleted_at",
+  // Categories
+  "分類名稱": "name"
+};
+
 // Helper: Get sheet data as objects
 function getData(ss, sheetName) {
   const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return [];
   const values = sheet.getDataRange().getValues();
+  if (values.length <= 1) return [];
+  
   const headers = values[0];
   const items = [];
   for (let i = 1; i < values.length; i++) {
     const item = {};
     headers.forEach((h, index) => {
-      item[h] = values[i][index];
+      // Use mapping if exists, otherwise fallback to original header
+      const key = HEADER_MAP[h] || h;
+      item[key] = values[i][index];
     });
     items.push(item);
   }
   return items;
+}
+
+/**
+ * 執行此功能以自動建立試算表欄位（中文）
+ */
+function setupSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // Users Sheet
+  let sheet = ss.getSheetByName('users') || ss.insertSheet('users');
+  sheet.getRange(1, 1, 1, 4).setValues([["ID", "使用者名稱", "頭像", "建立時間"]]);
+  sheet.getRange(1, 1, 1, 4).setBackground("#f3f4f6").setFontWeight("bold");
+  
+  // Words Sheet
+  sheet = ss.getSheetByName('words') || ss.insertSheet('words');
+  const wordHeaders = ["ID", "單字", "音標", "詞性", "定義", "例句", "例句翻譯", "例句分段", "分類", "錯誤次數", "使用者ID", "刪除時間", "建立時間"];
+  sheet.getRange(1, 1, 1, wordHeaders.length).setValues([wordHeaders]);
+  sheet.getRange(1, 1, 1, wordHeaders.length).setBackground("#f3f4f6").setFontWeight("bold");
+  
+  // Categories Sheet
+  sheet = ss.getSheetByName('categories') || ss.insertSheet('categories');
+  sheet.getRange(1, 1, 1, 4).setValues([["ID", "分類名稱", "使用者ID", "建立時間"]]);
+  sheet.getRange(1, 1, 1, 4).setBackground("#f3f4f6").setFontWeight("bold");
+  
+  Browser.msgBox("完成！所有分頁的中文標題已成功寫入。");
 }
 
 // Action: addUser

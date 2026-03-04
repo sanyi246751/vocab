@@ -9,6 +9,11 @@
       "DOM",
       "DOM.Iterable"
     ],
+    "types": [
+      "node",
+      "react",
+      "react-dom"
+    ],
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "isolatedModules": true,

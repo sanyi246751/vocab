@@ -3,7 +3,7 @@ import { GoogleGenAI, Type, Modality } from "@google/genai";
 // Use a function or safe access to prevent crash if process is undefined in browser
 export const getApiKey = () => {
   try {
-    return (process.env.GEMINI_API_KEY) || "";
+    return (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : "") || "";
   } catch {
     return "";
   }
@@ -159,8 +159,8 @@ export async function extractWordsFromText(text: string, customApiKey?: string):
   }
 }
 
-export async function evaluatePronunciation(audioBase64: string, targetWord: string): Promise<{ score: number, feedback: string }> {
-  const response = await getAI().models.generateContent({
+export async function evaluatePronunciation(audioBase64: string, targetWord: string, customApiKey?: string): Promise<{ score: number, feedback: string }> {
+  const response = await getAI(customApiKey).models.generateContent({
     model: "gemini-3-flash-preview",
     contents: [
       {

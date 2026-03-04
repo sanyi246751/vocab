@@ -535,7 +535,7 @@ export default function App() {
         reader.onloadend = async () => {
           const base64Audio = (reader.result as string).split(',')[1];
           setLoading(true);
-          const result = await evaluatePronunciation(base64Audio, words[reviewIndex].word);
+          const result = await evaluatePronunciation(base64Audio, words[reviewIndex].word, apiKey);
           setPronunciationResult(result);
           setShowDefinition(true);
           setLoading(false);
