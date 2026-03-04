@@ -156,7 +156,7 @@ export default function App() {
   const [stats, setStats] = useState<{ total: number, byCategory: Record<string, number> }>({ total: 0, byCategory: {} });
 
   // GAS Configuration
-  const GAS_URL = "YOUR_GAS_WEB_APP_URL"; // REPLACE THIS AFTER DEPLOYING GAS
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbzT29iESU7OS7h1HlV9aBlzvK50UM9gcHmtklkLclNmeXDkH2i-cMJw-HuGZRabCFq6/exec"; // REPLACE THIS AFTER DEPLOYING GAS
 
   const gasFetch = async (action: string, options: any = {}) => {
     const isPost = options.method === 'POST' || options.method === 'PUT' || options.method === 'PATCH' || options.method === 'DELETE';
