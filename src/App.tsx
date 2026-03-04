@@ -164,9 +164,21 @@ export default function App() {
   // GAS Configuration
   const GAS_URL = "https://script.google.com/macros/s/AKfycbzT29iESU7OS7h1HlV9aBlzvK50UM9gcHmtklkLclNmeXDkH2i-cMJw-HuGZRabCFq6/exec"; // REPLACE THIS AFTER DEPLOYING GAS
 
-  const gasFetch = async (action: string, options: any = {}) => {
+  interface GasFetchOptions {
+    method?: string;
+    params?: Record<string, string | number | boolean | undefined>;
+    body?: any;
+  }
+
+  const gasFetch = async (action: string, options: GasFetchOptions = {}) => {
     const isPost = options.method === 'POST' || options.method === 'PUT' || options.method === 'PATCH' || options.method === 'DELETE';
-    const params = new URLSearchParams(options.params || {});
+    const paramsObj: Record<string, string> = {};
+    if (options.params) {
+      Object.entries(options.params).forEach(([key, val]) => {
+        if (val !== undefined) paramsObj[key] = String(val);
+      });
+    }
+    const params = new URLSearchParams(paramsObj);
     params.append('action', action);
 
     const url = `${GAS_URL}?${params.toString()}`;
@@ -390,7 +402,7 @@ export default function App() {
     if (!currentUser) return;
     setLoading(true);
     try {
-      const params: any = { user_id: currentUser.id };
+      const params: Record<string, any> = { user_id: currentUser.id };
       if (selectedCategory !== '全部') params.category = selectedCategory;
       const data = await gasFetch('getWords', { params });
       setWords(data);
