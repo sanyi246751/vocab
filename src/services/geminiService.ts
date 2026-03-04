@@ -9,7 +9,10 @@ const getApiKey = () => {
   }
 };
 
-const ai = new GoogleGenAI({ apiKey: getApiKey() });
+// Initialize inside functions to avoid top-level issues
+function getAI() {
+  return new GoogleGenAI({ apiKey: getApiKey() });
+}
 
 export interface ExampleSegment {
   en: string;
@@ -32,7 +35,7 @@ export interface ExtractionResult {
 }
 
 export async function extractWordsFromMedia(base64Data: string, mimeType: string): Promise<ExtractionResult> {
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model: "gemini-3-flash-preview",
     contents: [
       {
@@ -96,7 +99,7 @@ export async function extractWordsFromMedia(base64Data: string, mimeType: string
 }
 
 export async function extractWordsFromText(text: string): Promise<ExtractionResult> {
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model: "gemini-3-flash-preview",
     contents: [
       {
@@ -156,7 +159,7 @@ Text: ${text}`,
 }
 
 export async function evaluatePronunciation(audioBase64: string, targetWord: string): Promise<{ score: number, feedback: string }> {
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model: "gemini-3-flash-preview",
     contents: [
       {
