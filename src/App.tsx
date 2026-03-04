@@ -4,15 +4,15 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Upload, 
-  BookOpen, 
-  Play, 
-  Trash2, 
-  Plus, 
-  Loader2, 
-  Volume2, 
-  ChevronRight, 
+import {
+  Upload,
+  BookOpen,
+  Play,
+  Trash2,
+  Plus,
+  Loader2,
+  Volume2,
+  ChevronRight,
   ChevronLeft,
   X,
   CheckCircle2,
@@ -60,10 +60,10 @@ const InteractiveExample = ({ segments, fullText, translation }: { segments: Exa
   const [isComparing, setIsComparing] = useState(false);
 
   if ((!segments || segments.length === 0) && !fullText) return null;
-  
+
   if (!segments || segments.length === 0) {
     return (
-      <div 
+      <div
         className="space-y-1.5 cursor-pointer"
         onClick={() => setIsComparing(!isComparing)}
       >
@@ -75,7 +75,7 @@ const InteractiveExample = ({ segments, fullText, translation }: { segments: Exa
 
   return (
     <div className="space-y-3">
-      <div 
+      <div
         className="flex flex-wrap gap-x-1.5 leading-relaxed cursor-pointer"
         onClick={() => setIsComparing(!isComparing)}
       >
@@ -86,8 +86,8 @@ const InteractiveExample = ({ segments, fullText, translation }: { segments: Exa
             onMouseLeave={() => setHoveredIndex(null)}
             className={cn(
               "cursor-default transition-all rounded-md px-1 py-0.5 font-medium",
-              hoveredIndex === idx ? "bg-indigo-600 text-white shadow-sm" : 
-              (isComparing ? "text-indigo-600 bg-indigo-50" : "text-zinc-800 hover:bg-zinc-100")
+              hoveredIndex === idx ? "bg-indigo-600 text-white shadow-sm" :
+                (isComparing ? "text-indigo-600 bg-indigo-50" : "text-zinc-800 hover:bg-zinc-100")
             )}
           >
             {seg.en}
@@ -100,8 +100,8 @@ const InteractiveExample = ({ segments, fullText, translation }: { segments: Exa
             key={idx}
             className={cn(
               "transition-all rounded-md px-1 py-0.5",
-              hoveredIndex === idx ? "bg-indigo-100 text-indigo-700 font-medium" : 
-              (isComparing ? "text-indigo-500 font-medium" : "text-zinc-400")
+              hoveredIndex === idx ? "bg-indigo-100 text-indigo-700 font-medium" :
+                (isComparing ? "text-indigo-500 font-medium" : "text-zinc-400")
             )}
           >
             {seg.zh}
@@ -155,6 +155,29 @@ export default function App() {
   const [showDifficultOnly, setShowDifficultOnly] = useState(false);
   const [stats, setStats] = useState<{ total: number, byCategory: Record<string, number> }>({ total: 0, byCategory: {} });
 
+  // GAS Configuration
+  const GAS_URL = "YOUR_GAS_WEB_APP_URL"; // REPLACE THIS AFTER DEPLOYING GAS
+
+  const gasFetch = async (action: string, options: any = {}) => {
+    const isPost = options.method === 'POST' || options.method === 'PUT' || options.method === 'PATCH' || options.method === 'DELETE';
+    const params = new URLSearchParams(options.params || {});
+    params.append('action', action);
+
+    const url = `${GAS_URL}?${params.toString()}`;
+
+    if (isPost) {
+      const res = await fetch(url, {
+        method: 'POST',
+        body: options.body ? JSON.stringify(options.body) : undefined,
+      });
+      return await res.json();
+    } else {
+      const res = await fetch(url);
+      if (action === 'export') return res.blob();
+      return await res.json();
+    }
+  };
+
   // Game State
   const [gamePairs, setGamePairs] = useState<{ id: number, word: string, definition: string }[]>([]);
   const [shuffledWords, setShuffledWords] = useState<{ id: number, text: string }[]>([]);
@@ -180,8 +203,7 @@ export default function App() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/users');
-      const data = await res.json();
+      const data = await gasFetch('getUsers');
       setUsers(data);
       if (data.length > 0 && !currentUser) {
         setCurrentUser(data[0]);
@@ -194,17 +216,13 @@ export default function App() {
   const addUser = async () => {
     if (!newUsername.trim()) return;
     try {
-      const res = await fetch('/api/users', {
+      const newUser = await gasFetch('addUser', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: newUsername.trim() }),
+        body: { username: newUsername.trim() }
       });
-      if (res.ok) {
-        const newUser = await res.json();
-        setUsers([...users, newUser]);
-        setNewUsername('');
-        setCurrentUser(newUser);
-      }
+      setUsers([...users, newUser]);
+      setNewUsername('');
+      setCurrentUser(newUser);
     } catch (error) {
       console.error("Failed to add user", error);
     }
@@ -213,8 +231,7 @@ export default function App() {
   const fetchStats = async () => {
     if (!currentUser) return;
     try {
-      const res = await fetch(`/api/stats?user_id=${currentUser.id}`);
-      const data = await res.json();
+      const data = await gasFetch('getStats', { params: { user_id: currentUser.id } });
       setStats(data);
     } catch (error) {
       console.error("Failed to fetch stats", error);
@@ -224,8 +241,7 @@ export default function App() {
   const fetchDifficultWords = async () => {
     if (!currentUser) return;
     try {
-      const res = await fetch(`/api/words/difficult?user_id=${currentUser.id}`);
-      const data = await res.json();
+      const data = await gasFetch('getDifficultWords', { params: { user_id: currentUser.id } });
       setDifficultWords(data);
     } catch (error) {
       console.error("Failed to fetch difficult words", error);
@@ -236,8 +252,7 @@ export default function App() {
     if (!currentUser) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/words/trash?user_id=${currentUser.id}`);
-      const data = await res.json();
+      const data = await gasFetch('getTrashWords', { params: { user_id: currentUser.id } });
       setTrashWords(data);
     } catch (error) {
       console.error("Failed to fetch trash words", error);
@@ -248,7 +263,7 @@ export default function App() {
 
   const restoreWord = async (id: number) => {
     try {
-      await fetch(`/api/words/${id}/restore`, { method: 'POST' });
+      await gasFetch('restoreWord', { method: 'POST', params: { id } });
       fetchTrashWords();
       fetchWords();
       fetchStats();
@@ -260,7 +275,7 @@ export default function App() {
   const permanentDeleteWord = async (id: number) => {
     if (!confirm("確定要永久刪除此單字嗎？此操作無法復原。")) return;
     try {
-      await fetch(`/api/words/${id}/permanent`, { method: 'DELETE' });
+      await gasFetch('permanentDeleteWord', { method: 'POST', params: { id } });
       fetchTrashWords();
     } catch (error) {
       console.error("Failed to permanently delete word", error);
@@ -269,10 +284,10 @@ export default function App() {
 
   const updateWordCategory = async (id: number, newCategory: string) => {
     try {
-      await fetch(`/api/words/${id}/category`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category: newCategory }),
+      await gasFetch('updateWordCategory', {
+        method: 'POST',
+        params: { id },
+        body: { category: newCategory }
       });
       fetchWords();
       fetchCategories();
@@ -283,36 +298,45 @@ export default function App() {
 
   const recordError = async (id: number) => {
     try {
-      await fetch(`/api/words/${id}/error`, { method: 'POST' });
+      await gasFetch('recordError', { method: 'POST', params: { id } });
       fetchDifficultWords();
     } catch (error) {
       console.error("Failed to record error", error);
     }
   };
 
-  const exportList = () => {
+  const exportList = async () => {
     if (!currentUser) return;
-    const url = selectedCategory === '全部' 
-      ? `/api/export?user_id=${currentUser.id}` 
-      : `/api/export?category=${encodeURIComponent(selectedCategory)}&user_id=${currentUser.id}`;
-    window.open(url, '_blank');
+    const params: any = { user_id: currentUser.id };
+    if (selectedCategory !== '全部') params.category = selectedCategory;
+
+    try {
+      const blob = await gasFetch('export', { params });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vocab_${selectedCategory}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export failed", error);
+    }
   };
 
   const addCategory = async () => {
     if (!newCategoryName.trim() || !currentUser) return;
     try {
-      const res = await fetch('/api/categories', {
+      const res = await gasFetch('addCategory', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCategoryName.trim(), user_id: currentUser.id }),
+        body: { name: newCategoryName.trim(), user_id: currentUser.id }
       });
-      if (res.ok) {
+      if (res.success) {
         setNewCategoryName('');
         fetchCategories();
         fetchStats();
       } else {
-        const data = await res.json();
-        alert(data.error || "新增分類失敗");
+        alert(res.error || "新增分類失敗");
       }
     } catch (error) {
       console.error("Failed to add category", error);
@@ -323,7 +347,10 @@ export default function App() {
     if (!currentUser) return;
     if (!confirm(`確定要刪除分類「${name}」嗎？該分類下的單字將被移動到「未分類」。`)) return;
     try {
-      await fetch(`/api/categories/${encodeURIComponent(name)}?user_id=${currentUser.id}`, { method: 'DELETE' });
+      await gasFetch('deleteCategory', {
+        method: 'POST',
+        params: { name, user_id: currentUser.id }
+      });
       fetchCategories();
       fetchWords();
       fetchStats();
@@ -336,10 +363,10 @@ export default function App() {
   const renameCategory = async () => {
     if (!editingCategory || !editingCategory.newName.trim() || !currentUser) return;
     try {
-      await fetch(`/api/categories/${encodeURIComponent(editingCategory.oldName)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newName: editingCategory.newName.trim(), user_id: currentUser.id }),
+      await gasFetch('renameCategory', {
+        method: 'POST',
+        params: { oldName: editingCategory.oldName },
+        body: { newName: editingCategory.newName.trim(), user_id: currentUser.id }
       });
       const oldName = editingCategory.oldName;
       const newName = editingCategory.newName.trim();
@@ -357,11 +384,9 @@ export default function App() {
     if (!currentUser) return;
     setLoading(true);
     try {
-      const url = selectedCategory === '全部' 
-        ? `/api/words?user_id=${currentUser.id}` 
-        : `/api/words?category=${encodeURIComponent(selectedCategory)}&user_id=${currentUser.id}`;
-      const res = await fetch(url);
-      const data = await res.json();
+      const params: any = { user_id: currentUser.id };
+      if (selectedCategory !== '全部') params.category = selectedCategory;
+      const data = await gasFetch('getWords', { params });
       setWords(data);
       // Clear selection when category changes
       setSelectedWordIds([]);
@@ -375,10 +400,9 @@ export default function App() {
   const bulkUpdateCategory = async (category: string) => {
     if (!category || selectedWordIds.length === 0 || !currentUser) return;
     try {
-      await fetch('/api/words/bulk-category', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: selectedWordIds, category, user_id: currentUser.id }),
+      await gasFetch('bulkUpdateCategory', {
+        method: 'POST',
+        body: { ids: selectedWordIds, category, user_id: currentUser.id }
       });
       fetchWords();
       setSelectedWordIds([]);
@@ -407,12 +431,12 @@ export default function App() {
       const start = Math.min(lastSelectedIndex.current, index);
       const end = Math.max(lastSelectedIndex.current, index);
       const idsInRange = words.slice(start, end + 1).map(w => w.id);
-      
+
       setSelectedWordIds(prev => {
         return Array.from(new Set([...prev, ...idsInRange]));
       });
     } else {
-      setSelectedWordIds(prev => 
+      setSelectedWordIds(prev =>
         prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
       );
     }
@@ -422,8 +446,7 @@ export default function App() {
   const fetchCategories = async () => {
     if (!currentUser) return;
     try {
-      const res = await fetch(`/api/categories?user_id=${currentUser.id}`);
-      const data = await res.json();
+      const data = await gasFetch('getCategories', { params: { user_id: currentUser.id } });
       setCategories(data);
     } catch (error) {
       console.error("Failed to fetch categories", error);
@@ -450,14 +473,13 @@ export default function App() {
     if (!currentUser) return;
     setLoading(true);
     try {
-      await fetch('/api/words', {
+      await gasFetch('addWords', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: {
           words: extractedWords,
           category: uploadCategory.trim() || '未分類',
           user_id: currentUser.id
-        }),
+        }
       });
       setExtractedWords([]);
       setUploadCategory('');
@@ -474,7 +496,7 @@ export default function App() {
 
   const deleteWord = async (id: number) => {
     try {
-      await fetch(`/api/words/${id}`, { method: 'DELETE' });
+      await gasFetch('deleteWord', { method: 'POST', params: { id } });
       setWords(words.filter(w => w.id !== id));
       fetchCategories();
       fetchStats();
@@ -514,7 +536,7 @@ export default function App() {
           setLoading(false);
         };
         reader.readAsDataURL(audioBlob);
-        
+
         // Stop all tracks to release the microphone
         stream.getTracks().forEach(track => track.stop());
       };
@@ -542,16 +564,16 @@ export default function App() {
     try {
       let allReviewWords: SavedWord[] = [];
       if (reviewCategories.length === 0) {
-        const res = await fetch(`/api/words?user_id=${currentUser.id}`);
-        allReviewWords = await res.json();
+        allReviewWords = await gasFetch('getWords', { params: { user_id: currentUser.id } });
       } else {
         for (const cat of reviewCategories) {
-          const res = await fetch(`/api/words?category=${encodeURIComponent(cat)}&user_id=${currentUser.id}`);
-          const data = await res.json();
+          const data = await gasFetch('getWords', {
+            params: { category: cat, user_id: currentUser.id }
+          });
           allReviewWords = [...allReviewWords, ...data];
         }
       }
-      
+
       if (showDifficultOnly) {
         allReviewWords = allReviewWords.filter(w => w.error_count > 0);
       }
@@ -587,7 +609,7 @@ export default function App() {
     if (reviewCategories.length > 0) {
       pool = pool.filter(w => reviewCategories.includes(w.category));
     }
-    
+
     if (pool.length < 4) {
       alert("單字數量不足，至少需要 4 個單字才能開始遊戲模式。");
       return;
@@ -595,7 +617,7 @@ export default function App() {
 
     const selected = [...pool].sort(() => 0.5 - Math.random()).slice(0, 6);
     const pairs = selected.map(w => ({ id: w.id, word: w.word, definition: w.definition }));
-    
+
     setGamePairs(pairs);
     setShuffledWords(pairs.map(p => ({ id: p.id, text: p.word })).sort(() => 0.5 - Math.random()));
     setShuffledDefs(pairs.map(p => ({ id: p.id, text: p.definition })).sort(() => 0.5 - Math.random()));
@@ -640,12 +662,12 @@ export default function App() {
             </div>
             <h1 className="font-serif text-xl font-bold tracking-tight hidden sm:block">VocabMaster AI</h1>
           </div>
-          
+
           {currentUser && (
             <div className="flex items-center gap-2 pl-4 border-l border-zinc-200">
-              <img 
-                src={currentUser.avatar} 
-                alt={currentUser.username} 
+              <img
+                src={currentUser.avatar}
+                alt={currentUser.username}
                 className="w-8 h-8 rounded-full border border-zinc-200 object-cover"
                 referrerPolicy="no-referrer"
               />
@@ -653,9 +675,9 @@ export default function App() {
             </div>
           )}
         </div>
-        
+
         <nav className="flex items-center gap-1 bg-zinc-100 p-1 rounded-xl">
-          <button 
+          <button
             onClick={() => setView('library')}
             className={cn(
               "px-4 py-1.5 rounded-lg text-sm font-medium transition-all",
@@ -664,7 +686,7 @@ export default function App() {
           >
             單字庫
           </button>
-          <button 
+          <button
             onClick={() => setView('upload')}
             className={cn(
               "px-4 py-1.5 rounded-lg text-sm font-medium transition-all",
@@ -673,7 +695,7 @@ export default function App() {
           >
             上傳辨識
           </button>
-          <button 
+          <button
             onClick={() => setView('review-setup')}
             className={cn(
               "px-4 py-1.5 rounded-lg text-sm font-medium transition-all",
@@ -682,7 +704,7 @@ export default function App() {
           >
             複習模式
           </button>
-          <button 
+          <button
             onClick={() => setView('settings')}
             className={cn(
               "px-4 py-1.5 rounded-lg text-sm font-medium transition-all",
@@ -707,7 +729,7 @@ export default function App() {
                       分類區
                     </h3>
                   </div>
-                  
+
                   <div className="space-y-1">
                     {['全部', ...categories].map((cat) => (
                       <div
@@ -721,8 +743,8 @@ export default function App() {
                         }}
                         className={cn(
                           "w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition-all group cursor-pointer",
-                          selectedCategory === cat 
-                            ? "bg-indigo-50 text-indigo-700" 
+                          selectedCategory === cat
+                            ? "bg-indigo-50 text-indigo-700"
                             : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900",
                           selectedWordIds.length > 0 && cat !== '全部' && cat !== selectedCategory && "ring-2 ring-indigo-500/20 ring-inset"
                         )}
@@ -737,7 +759,7 @@ export default function App() {
                         </span>
                         {cat !== '全部' && (
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setEditingCategory({ oldName: cat, newName: cat });
@@ -747,7 +769,7 @@ export default function App() {
                             >
                               <Edit2 className="w-3 h-3" />
                             </button>
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 deleteCategory(cat);
@@ -764,15 +786,15 @@ export default function App() {
 
                   <div className="pt-2 border-t border-zinc-100">
                     <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        placeholder="新增分類..." 
+                      <input
+                        type="text"
+                        placeholder="新增分類..."
                         value={newCategoryName}
                         onChange={(e) => setNewCategoryName(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && addCategory()}
                         className="flex-1 min-w-0 px-3 py-1.5 bg-zinc-50 rounded-lg text-xs border border-transparent focus:bg-white focus:border-indigo-500 focus:outline-none transition-all"
                       />
-                      <button 
+                      <button
                         onClick={addCategory}
                         className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
                       >
@@ -785,7 +807,7 @@ export default function App() {
                 <div className="bg-indigo-600 rounded-2xl p-5 text-white shadow-lg shadow-indigo-200">
                   <h4 className="font-bold mb-1">學習進度</h4>
                   <p className="text-indigo-100 text-xs mb-4">今天你已經複習了 0 個單字</p>
-                  <button 
+                  <button
                     onClick={() => setView('review-setup')}
                     className="w-full bg-white text-indigo-600 py-2 rounded-xl text-sm font-bold hover:bg-indigo-50 transition-colors"
                   >
@@ -794,7 +816,7 @@ export default function App() {
                 </div>
               </aside>
 
-              <motion.div 
+              <motion.div
                 key="library"
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -808,7 +830,7 @@ export default function App() {
                       <p className="text-zinc-500 text-sm">共收錄 {words.length} 個單字</p>
                     </div>
                     <div className="flex items-center gap-1 bg-zinc-100 p-1 rounded-xl">
-                      <button 
+                      <button
                         onClick={() => {
                           if (selectedWordIds.length === words.length) {
                             setSelectedWordIds([]);
@@ -825,21 +847,21 @@ export default function App() {
                         全選
                       </button>
                       <div className="w-px h-4 bg-zinc-200 mx-1" />
-                      <button 
+                      <button
                         onClick={() => setDisplayMode('all')}
                         className={cn("p-1.5 rounded-lg transition-all", displayMode === 'all' ? "bg-white shadow-sm text-indigo-600" : "text-zinc-500")}
                         title="全部顯示"
                       >
                         <LayoutGrid className="w-4 h-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => setDisplayMode('word-only')}
                         className={cn("p-1.5 rounded-lg transition-all", displayMode === 'word-only' ? "bg-white shadow-sm text-indigo-600" : "text-zinc-500")}
                         title="僅顯示單字"
                       >
                         <List className="w-4 h-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => setDisplayMode('comparison')}
                         className={cn("p-1.5 rounded-lg transition-all", displayMode === 'comparison' ? "bg-white shadow-sm text-indigo-600" : "text-zinc-500")}
                         title="單字中文對照"
@@ -849,14 +871,14 @@ export default function App() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button 
+                    <button
                       onClick={exportList}
                       className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-zinc-100 rounded-xl transition-all"
                       title="匯出單字清單"
                     >
                       <Download className="w-5 h-5" />
                     </button>
-                    <button 
+                    <button
                       onClick={() => setView('upload')}
                       className="bg-indigo-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap"
                     >
@@ -867,140 +889,140 @@ export default function App() {
                 </div>
 
                 {loading ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-4">
-                  <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-                  <p className="text-zinc-500">載入中...</p>
-                </div>
-              ) : words.length === 0 ? (
-                <div className="bg-white border-2 border-dashed border-zinc-200 rounded-3xl p-20 flex flex-col items-center justify-center text-center gap-4">
-                  <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center">
-                    <BookOpen className="text-zinc-400 w-8 h-8" />
+                  <div className="flex flex-col items-center justify-center py-20 gap-4">
+                    <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                    <p className="text-zinc-500">載入中...</p>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-medium">找不到單字</h3>
-                    <p className="text-zinc-500 max-w-xs mx-auto">嘗試切換分類，或上傳新的學習材料。</p>
+                ) : words.length === 0 ? (
+                  <div className="bg-white border-2 border-dashed border-zinc-200 rounded-3xl p-20 flex flex-col items-center justify-center text-center gap-4">
+                    <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center">
+                      <BookOpen className="text-zinc-400 w-8 h-8" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium">找不到單字</h3>
+                      <p className="text-zinc-500 max-w-xs mx-auto">嘗試切換分類，或上傳新的學習材料。</p>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {words.map((word, index) => (
-                    <div 
-                      key={word.id} 
-                      onClick={(e) => selectedWordIds.length > 0 && toggleWordSelection(word.id, index, e.shiftKey)}
-                      className={cn(
-                        "bg-white p-5 rounded-2xl border transition-all group relative cursor-pointer",
-                        selectedWordIds.includes(word.id) ? "border-indigo-600 ring-2 ring-indigo-500/20 shadow-lg" : "border-zinc-200 hover:border-indigo-200 hover:shadow-md"
-                      )}
-                    >
-                      {/* Top Right Actions: Delete, Category, Checkbox */}
-                      <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-                        {displayMode === 'all' && (
-                          <button 
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {words.map((word, index) => (
+                      <div
+                        key={word.id}
+                        onClick={(e) => selectedWordIds.length > 0 && toggleWordSelection(word.id, index, e.shiftKey)}
+                        className={cn(
+                          "bg-white p-5 rounded-2xl border transition-all group relative cursor-pointer",
+                          selectedWordIds.includes(word.id) ? "border-indigo-600 ring-2 ring-indigo-500/20 shadow-lg" : "border-zinc-200 hover:border-indigo-200 hover:shadow-md"
+                        )}
+                      >
+                        {/* Top Right Actions: Delete, Category, Checkbox */}
+                        <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+                          {displayMode === 'all' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteWord(word.id);
+                              }}
+                              className="text-zinc-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0 p-1"
+                              title="刪除單字"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          {displayMode === 'all' && (
+                            <select
+                              value={word.category}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => updateWordCategory(word.id, e.target.value)}
+                              className="px-2 py-0.5 bg-zinc-100 text-zinc-500 text-[10px] rounded-full font-medium border-none focus:ring-0 cursor-pointer hover:bg-zinc-200 transition-colors"
+                            >
+                              {['未分類', ...categories].map(c => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
+                          )}
+
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              deleteWord(word.id);
+                              toggleWordSelection(word.id, index, e.shiftKey);
                             }}
-                            className="text-zinc-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0 p-1"
-                            title="刪除單字"
+                            className={cn(
+                              "p-1 rounded-lg transition-all",
+                              selectedWordIds.includes(word.id) ? "text-indigo-600" : "text-zinc-200 group-hover:text-zinc-400"
+                            )}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            {selectedWordIds.includes(word.id) ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
                           </button>
-                        )}
-                        
-                        {displayMode === 'all' && (
-                          <select 
-                            value={word.category}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => updateWordCategory(word.id, e.target.value)}
-                            className="px-2 py-0.5 bg-zinc-100 text-zinc-500 text-[10px] rounded-full font-medium border-none focus:ring-0 cursor-pointer hover:bg-zinc-200 transition-colors"
-                          >
-                            {['未分類', ...categories].map(c => (
-                              <option key={c} value={c}>{c}</option>
-                            ))}
-                          </select>
-                        )}
-
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleWordSelection(word.id, index, e.shiftKey);
-                          }}
-                          className={cn(
-                            "p-1 rounded-lg transition-all",
-                            selectedWordIds.includes(word.id) ? "text-indigo-600" : "text-zinc-200 group-hover:text-zinc-400"
-                          )}
-                        >
-                          {selectedWordIds.includes(word.id) ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
-                        </button>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 pr-24">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-xl font-bold text-indigo-900 truncate">{word.word}</h3>
-                            {word.pos && (
-                              <span className="text-xs font-bold text-indigo-400 italic">({word.pos})</span>
-                            )}
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSpeak(word.word);
-                              }}
-                              disabled={audioLoading === word.word}
-                              className="text-zinc-400 hover:text-indigo-600 transition-colors shrink-0"
-                            >
-                              {audioLoading === word.word ? <Loader2 className="w-4 h-4 animate-spin" /> : <Volume2 className="w-4 h-4" />}
-                            </button>
-                            {displayMode !== 'word-only' && (
-                              <span className="text-zinc-700 font-medium text-sm sm:text-base border-l border-zinc-200 pl-2 ml-1">
-                                {word.definition}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <p className="text-zinc-400 font-mono text-sm">{word.phonetic}</p>
-                            {word.error_count > 0 && (
-                              <span className="px-2 py-0.5 bg-red-50 text-red-500 text-[10px] rounded-full font-bold">
-                                錯誤 {word.error_count} 次
-                              </span>
-                            )}
-                          </div>
                         </div>
-                      </div>
-                      
-                      {displayMode === 'all' && (
-                        <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100 space-y-3">
-                          <div className="flex items-start gap-2">
-                            <div className="flex-1">
-                              <InteractiveExample 
-                                segments={word.example_segments} 
-                                fullText={word.example} 
-                                translation={word.example_translation}
-                              />
+
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 pr-24">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-xl font-bold text-indigo-900 truncate">{word.word}</h3>
+                              {word.pos && (
+                                <span className="text-xs font-bold text-indigo-400 italic">({word.pos})</span>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSpeak(word.word);
+                                }}
+                                disabled={audioLoading === word.word}
+                                className="text-zinc-400 hover:text-indigo-600 transition-colors shrink-0"
+                              >
+                                {audioLoading === word.word ? <Loader2 className="w-4 h-4 animate-spin" /> : <Volume2 className="w-4 h-4" />}
+                              </button>
+                              {displayMode !== 'word-only' && (
+                                <span className="text-zinc-700 font-medium text-sm sm:text-base border-l border-zinc-200 pl-2 ml-1">
+                                  {word.definition}
+                                </span>
+                              )}
                             </div>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSpeak(word.example);
-                              }}
-                              disabled={audioLoading === word.example}
-                              className="text-zinc-400 hover:text-indigo-600 transition-colors mt-0.5"
-                            >
-                              {audioLoading === word.example ? <Loader2 className="w-3 h-3 animate-spin" /> : <Volume2 className="w-3 h-3" />}
-                            </button>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-zinc-400 font-mono text-sm">{word.phonetic}</p>
+                              {word.error_count > 0 && (
+                                <span className="px-2 py-0.5 bg-red-50 text-red-500 text-[10px] rounded-full font-bold">
+                                  錯誤 {word.error_count} 次
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          </div>
-        )}
+
+                        {displayMode === 'all' && (
+                          <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100 space-y-3">
+                            <div className="flex items-start gap-2">
+                              <div className="flex-1">
+                                <InteractiveExample
+                                  segments={word.example_segments}
+                                  fullText={word.example}
+                                  translation={word.example_translation}
+                                />
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSpeak(word.example);
+                                }}
+                                disabled={audioLoading === word.example}
+                                className="text-zinc-400 hover:text-indigo-600 transition-colors mt-0.5"
+                              >
+                                {audioLoading === word.example ? <Loader2 className="w-3 h-3 animate-spin" /> : <Volume2 className="w-3 h-3" />}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            </div>
+          )}
 
           {view === 'upload' && (
-            <motion.div 
+            <motion.div
               key="upload"
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1013,19 +1035,19 @@ export default function App() {
               </div>
 
               <div className="flex justify-center gap-2">
-                <button 
+                <button
                   onClick={() => setUploadMethod('file')}
                   className={cn("px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2", uploadMethod === 'file' ? "bg-indigo-600 text-white shadow-md" : "bg-white text-zinc-500 hover:bg-zinc-50 border border-zinc-200")}
                 >
                   <Upload className="w-4 h-4" /> 檔案上傳
                 </button>
-                <button 
+                <button
                   onClick={() => setUploadMethod('camera')}
                   className={cn("px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2", uploadMethod === 'camera' ? "bg-indigo-600 text-white shadow-md" : "bg-white text-zinc-500 hover:bg-zinc-50 border border-zinc-200")}
                 >
                   <Camera className="w-4 h-4" /> 拍照辨識
                 </button>
-                <button 
+                <button
                   onClick={() => setUploadMethod('text')}
                   className={cn("px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2", uploadMethod === 'text' ? "bg-indigo-600 text-white shadow-md" : "bg-white text-zinc-500 hover:bg-zinc-50 border border-zinc-200")}
                 >
@@ -1037,8 +1059,8 @@ export default function App() {
                 <div className="space-y-6">
                   {uploadMethod === 'file' && (
                     <div className="relative">
-                      <input 
-                        type="file" 
+                      <input
+                        type="file"
                         ref={fileInputRef}
                         accept="image/*,application/pdf"
                         onChange={handleFileUpload}
@@ -1074,15 +1096,15 @@ export default function App() {
 
                   {uploadMethod === 'camera' && (
                     <div className="space-y-4">
-                      <input 
-                        type="file" 
+                      <input
+                        type="file"
                         ref={cameraInputRef}
                         accept="image/*"
                         capture="environment"
                         onChange={handleFileUpload}
                         className="hidden"
                       />
-                      <button 
+                      <button
                         onClick={() => cameraInputRef.current?.click()}
                         disabled={uploading}
                         className="w-full aspect-video border-2 border-dashed border-indigo-200 rounded-3xl flex flex-col items-center justify-center gap-4 bg-white hover:bg-indigo-50 transition-all group"
@@ -1106,14 +1128,14 @@ export default function App() {
 
                   {uploadMethod === 'text' && (
                     <div className="space-y-4">
-                      <textarea 
+                      <textarea
                         value={manualInput}
                         onChange={(e) => setManualInput(e.target.value)}
                         placeholder="在此輸入單字或一段英文，AI 將自動提取單字並生成例句..."
                         className="w-full h-48 p-6 rounded-3xl border border-zinc-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none"
                         disabled={uploading}
                       />
-                      <button 
+                      <button
                         onClick={handleManualInput}
                         disabled={uploading || !manualInput.trim()}
                         className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
@@ -1143,9 +1165,9 @@ export default function App() {
                       ))}
                     </div>
                     <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        placeholder="輸入新分類名稱..." 
+                      <input
+                        type="text"
+                        placeholder="輸入新分類名稱..."
                         value={uploadCategory}
                         onChange={(e) => setUploadCategory(e.target.value)}
                         className="flex-1 px-4 py-2 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
@@ -1157,13 +1179,13 @@ export default function App() {
                     <div className="flex items-center justify-between">
                       <h3 className="font-bold text-lg">辨識結果 ({extractedWords.length})</h3>
                       <div className="flex gap-2">
-                        <button 
+                        <button
                           onClick={() => setExtractedWords([])}
                           className="px-4 py-2 text-zinc-600 hover:bg-zinc-100 rounded-xl transition-colors"
                         >
                           重新上傳
                         </button>
-                        <button 
+                        <button
                           onClick={saveExtractedWords}
                           disabled={loading}
                           className="bg-indigo-600 text-white px-6 py-2 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm flex items-center gap-2"
@@ -1187,7 +1209,7 @@ export default function App() {
                               <p className="text-xs text-zinc-400">{word.example_translation}</p>
                             </div>
                           </div>
-                          <button 
+                          <button
                             onClick={() => setExtractedWords(extractedWords.filter((_, i) => i !== idx))}
                             className="text-zinc-300 hover:text-red-500 self-start"
                           >
@@ -1203,7 +1225,7 @@ export default function App() {
           )}
 
           {view === 'settings' && (
-            <motion.div 
+            <motion.div
               key="settings"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1252,7 +1274,7 @@ export default function App() {
                       回收桶
                     </h3>
                     <p className="text-sm text-zinc-500 mb-4">查看並恢復已刪除的單字。</p>
-                    <button 
+                    <button
                       onClick={() => {
                         fetchTrashWords();
                         setView('trash');
@@ -1278,15 +1300,15 @@ export default function App() {
                             onClick={() => setCurrentUser(user)}
                             className={cn(
                               "flex items-center justify-between px-4 py-3 rounded-2xl border transition-all",
-                              currentUser?.id === user.id 
-                                ? "border-indigo-600 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-500/10" 
+                              currentUser?.id === user.id
+                                ? "border-indigo-600 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-500/10"
                                 : "border-zinc-200 hover:border-indigo-200 hover:bg-zinc-50 text-zinc-600"
                             )}
                           >
                             <div className="flex items-center gap-3">
-                              <img 
-                                src={user.avatar} 
-                                alt={user.username} 
+                              <img
+                                src={user.avatar}
+                                alt={user.username}
                                 className="w-8 h-8 rounded-full border border-zinc-200 object-cover"
                                 referrerPolicy="no-referrer"
                               />
@@ -1297,15 +1319,15 @@ export default function App() {
                         ))}
                       </div>
                       <div className="flex gap-2 pt-2">
-                        <input 
-                          type="text" 
-                          placeholder="新增使用者名稱..." 
+                        <input
+                          type="text"
+                          placeholder="新增使用者名稱..."
                           value={newUsername}
                           onChange={(e) => setNewUsername(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && addUser()}
                           className="flex-1 px-4 py-2 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                         />
-                        <button 
+                        <button
                           onClick={addUser}
                           className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center gap-2"
                         >
@@ -1322,15 +1344,15 @@ export default function App() {
                     </h3>
                     <div className="space-y-4">
                       <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          placeholder="輸入新分類名稱..." 
+                        <input
+                          type="text"
+                          placeholder="輸入新分類名稱..."
                           value={newCategoryName}
                           onChange={(e) => setNewCategoryName(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && addCategory()}
                           className="flex-1 px-4 py-2 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                         />
-                        <button 
+                        <button
                           onClick={addCategory}
                           className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center gap-2"
                         >
@@ -1343,9 +1365,9 @@ export default function App() {
                           <div key={cat} className="flex items-center justify-between p-3 bg-zinc-50 rounded-xl border border-zinc-100 group">
                             {editingCategory?.oldName === cat ? (
                               <div className="flex items-center gap-2 w-full">
-                                <input 
+                                <input
                                   autoFocus
-                                  type="text" 
+                                  type="text"
                                   value={editingCategory.newName}
                                   onChange={(e) => setEditingCategory({ ...editingCategory, newName: e.target.value })}
                                   onKeyDown={(e) => e.key === 'Enter' && renameCategory()}
@@ -1358,13 +1380,13 @@ export default function App() {
                               <>
                                 <span className="text-sm font-medium text-zinc-700">{cat}</span>
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                  <button 
+                                  <button
                                     onClick={() => setEditingCategory({ oldName: cat, newName: cat })}
                                     className="p-1.5 text-zinc-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all"
                                   >
                                     <Edit2 className="w-3.5 h-3.5" />
                                   </button>
-                                  <button 
+                                  <button
                                     onClick={() => deleteCategory(cat)}
                                     className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-white rounded-lg transition-all"
                                   >
@@ -1384,7 +1406,7 @@ export default function App() {
           )}
 
           {view === 'trash' && (
-            <motion.div 
+            <motion.div
               key="trash"
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
@@ -1393,7 +1415,7 @@ export default function App() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <button 
+                  <button
                     onClick={() => setView('settings')}
                     className="p-2 hover:bg-zinc-100 rounded-xl transition-colors"
                   >
@@ -1422,8 +1444,8 @@ export default function App() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {trashWords.map((word) => (
-                    <div 
-                      key={word.id} 
+                    <div
+                      key={word.id}
                       className="bg-white p-5 rounded-2xl border border-zinc-200 transition-all hover:shadow-md group relative"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
@@ -1437,13 +1459,13 @@ export default function App() {
                           <p className="text-zinc-400 text-sm">{word.definition}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <button 
+                          <button
                             onClick={() => restoreWord(word.id)}
                             className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors flex items-center gap-1 text-xs font-bold"
                           >
                             <RefreshCw className="w-4 h-4" /> 恢復
                           </button>
-                          <button 
+                          <button
                             onClick={() => permanentDeleteWord(word.id)}
                             className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors flex items-center gap-1 text-xs font-bold"
                           >
@@ -1458,7 +1480,7 @@ export default function App() {
             </motion.div>
           )}
           {view === 'review-setup' && (
-            <motion.div 
+            <motion.div
               key="review-setup"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1481,14 +1503,14 @@ export default function App() {
                       <button
                         key={cat}
                         onClick={() => {
-                          setReviewCategories(prev => 
+                          setReviewCategories(prev =>
                             prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
                           );
                         }}
                         className={cn(
                           "px-4 py-3 rounded-2xl text-sm font-medium border-2 transition-all text-left flex items-center justify-between",
-                          reviewCategories.includes(cat) 
-                            ? "border-indigo-600 bg-indigo-50 text-indigo-700" 
+                          reviewCategories.includes(cat)
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-700"
                             : "border-zinc-100 bg-zinc-50 text-zinc-600 hover:border-zinc-200"
                         )}
                       >
@@ -1509,7 +1531,7 @@ export default function App() {
                   </h3>
                   <div className="flex flex-col gap-3">
                     <div className="flex gap-3">
-                      <button 
+                      <button
                         onClick={() => setReviewMode('flashcard')}
                         className={cn(
                           "flex-1 py-3 rounded-2xl text-sm font-bold border-2 transition-all",
@@ -1518,7 +1540,7 @@ export default function App() {
                       >
                         翻卡模式
                       </button>
-                      <button 
+                      <button
                         onClick={() => setReviewMode('typing')}
                         className={cn(
                           "flex-1 py-3 rounded-2xl text-sm font-bold border-2 transition-all",
@@ -1527,7 +1549,7 @@ export default function App() {
                       >
                         打字模式
                       </button>
-                      <button 
+                      <button
                         onClick={() => setReviewMode('speaking')}
                         className={cn(
                           "flex-1 py-3 rounded-2xl text-sm font-bold border-2 transition-all",
@@ -1537,13 +1559,13 @@ export default function App() {
                         口說模式
                       </button>
                     </div>
-                    
-                    <button 
+
+                    <button
                       onClick={() => setShowDifficultOnly(!showDifficultOnly)}
                       className={cn(
                         "w-full py-3 rounded-2xl text-sm font-bold border-2 transition-all flex items-center justify-center gap-2",
-                        showDifficultOnly 
-                          ? "border-red-500 bg-red-50 text-red-600" 
+                        showDifficultOnly
+                          ? "border-red-500 bg-red-50 text-red-600"
                           : "border-zinc-100 bg-zinc-50 text-zinc-400 hover:border-zinc-200"
                       )}
                     >
@@ -1554,7 +1576,7 @@ export default function App() {
                 </div>
 
                 <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <button 
+                  <button
                     onClick={startReview}
                     disabled={loading}
                     className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-50"
@@ -1562,7 +1584,7 @@ export default function App() {
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />}
                     開始複習
                   </button>
-                  <button 
+                  <button
                     onClick={startGame}
                     disabled={loading}
                     className="w-full bg-amber-500 text-white py-4 rounded-2xl font-bold text-lg hover:bg-amber-600 transition-all shadow-lg shadow-amber-200 flex items-center justify-center gap-2 disabled:opacity-50"
@@ -1576,7 +1598,7 @@ export default function App() {
           )}
 
           {view === 'game' && (
-            <motion.div 
+            <motion.div
               key="game"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1584,7 +1606,7 @@ export default function App() {
               className="max-w-4xl mx-auto py-10 space-y-8"
             >
               <div className="flex items-center justify-between">
-                <button 
+                <button
                   onClick={() => setView('review-setup')}
                   className="text-zinc-500 hover:text-zinc-800 flex items-center gap-1"
                 >
@@ -1610,13 +1632,13 @@ export default function App() {
                     </p>
                   </div>
                   <div className="flex gap-4 justify-center pt-4">
-                    <button 
+                    <button
                       onClick={startGame}
                       className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition-all"
                     >
                       再玩一次
                     </button>
-                    <button 
+                    <button
                       onClick={() => setView('review-setup')}
                       className="bg-zinc-100 text-zinc-600 px-8 py-3 rounded-2xl font-bold hover:bg-zinc-200 transition-all"
                     >
@@ -1636,10 +1658,10 @@ export default function App() {
                           onClick={() => setSelectedGameWord(item.id)}
                           className={cn(
                             "p-4 rounded-2xl border-2 transition-all font-bold text-lg h-20 flex items-center justify-center",
-                            matchedIds.includes(item.id) 
-                              ? "bg-green-50 border-green-200 text-green-600 opacity-50" 
-                              : selectedGameWord === item.id 
-                                ? "bg-indigo-600 border-indigo-600 text-white shadow-lg scale-105" 
+                            matchedIds.includes(item.id)
+                              ? "bg-green-50 border-green-200 text-green-600 opacity-50"
+                              : selectedGameWord === item.id
+                                ? "bg-indigo-600 border-indigo-600 text-white shadow-lg scale-105"
                                 : "bg-white border-zinc-100 text-zinc-800 hover:border-indigo-200 hover:shadow-md"
                           )}
                         >
@@ -1659,10 +1681,10 @@ export default function App() {
                           onClick={() => setSelectedGameDef(item.id)}
                           className={cn(
                             "p-4 rounded-2xl border-2 transition-all font-medium text-sm h-20 flex items-center justify-center text-center leading-tight",
-                            matchedIds.includes(item.id) 
-                              ? "bg-green-50 border-green-200 text-green-600 opacity-50" 
-                              : selectedGameDef === item.id 
-                                ? "bg-indigo-600 border-indigo-600 text-white shadow-lg scale-105" 
+                            matchedIds.includes(item.id)
+                              ? "bg-green-50 border-green-200 text-green-600 opacity-50"
+                              : selectedGameDef === item.id
+                                ? "bg-indigo-600 border-indigo-600 text-white shadow-lg scale-105"
                                 : "bg-white border-zinc-100 text-zinc-800 hover:border-indigo-200 hover:shadow-md"
                           )}
                         >
@@ -1676,7 +1698,7 @@ export default function App() {
             </motion.div>
           )}
           {view === 'review' && words.length > 0 && (
-            <motion.div 
+            <motion.div
               key="review"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -1684,7 +1706,7 @@ export default function App() {
               className="max-w-2xl mx-auto flex flex-col items-center gap-8 py-10"
             >
               <div className="w-full flex items-center justify-between px-4">
-                <button 
+                <button
                   onClick={() => setView('review-setup')}
                   className="text-zinc-500 hover:text-zinc-800 flex items-center gap-1"
                 >
@@ -1698,7 +1720,7 @@ export default function App() {
 
               {reviewMode === 'flashcard' ? (
                 <div className="w-full perspective-1000">
-                  <motion.div 
+                  <motion.div
                     className="relative w-full h-[400px] cursor-pointer"
                     onClick={() => setShowDefinition(!showDefinition)}
                     animate={{ rotateY: showDefinition ? 180 : 0 }}
@@ -1708,12 +1730,12 @@ export default function App() {
                     {/* Front */}
                     <div className="absolute inset-0 bg-white rounded-[2.5rem] shadow-xl border border-zinc-100 flex flex-col items-center justify-center p-10 backface-hidden">
                       <div className="absolute top-8 left-8">
-                         <span className="px-3 py-1 bg-zinc-100 text-zinc-500 text-xs rounded-full font-medium">
+                        <span className="px-3 py-1 bg-zinc-100 text-zinc-500 text-xs rounded-full font-medium">
                           {words[reviewIndex].category}
                         </span>
                       </div>
                       <div className="absolute top-8 right-8">
-                        <button 
+                        <button
                           onClick={(e) => { e.stopPropagation(); handleSpeak(words[reviewIndex].word); }}
                           className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center hover:bg-indigo-100 transition-colors"
                         >
@@ -1744,7 +1766,7 @@ export default function App() {
                                   ))}
                                 </div>
                               </div>
-                              <button 
+                              <button
                                 onClick={(e) => { e.stopPropagation(); handleSpeak(words[reviewIndex].example); }}
                                 className="w-10 h-10 bg-white/20 text-white rounded-full flex items-center justify-center hover:bg-white/30 transition-colors shrink-0"
                               >
@@ -1771,7 +1793,7 @@ export default function App() {
 
                     <div className="w-full max-w-sm space-y-4">
                       <div className="relative">
-                        <input 
+                        <input
                           type="text"
                           value={userInput}
                           onChange={(e) => setUserInput(e.target.value)}
@@ -1780,7 +1802,7 @@ export default function App() {
                           disabled={showDefinition}
                           className={cn(
                             "w-full px-6 py-4 rounded-2xl border-2 text-2xl font-bold text-center transition-all focus:outline-none",
-                            showDefinition 
+                            showDefinition
                               ? (isCorrect ? "border-green-500 bg-green-50 text-green-700" : "border-red-500 bg-red-50 text-red-700")
                               : "border-zinc-100 focus:border-indigo-500"
                           )}
@@ -1798,7 +1820,7 @@ export default function App() {
                       </div>
 
                       {showDefinition && (
-                        <motion.div 
+                        <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           className="text-center space-y-4"
@@ -1811,7 +1833,7 @@ export default function App() {
                           )}
                           <div className="bg-zinc-50 p-6 rounded-2xl border border-zinc-100 w-full text-left">
                             <InteractiveExample segments={words[reviewIndex].example_segments} />
-                            <button 
+                            <button
                               onClick={() => handleSpeak(words[reviewIndex].example)}
                               className="mt-4 w-10 h-10 bg-zinc-200 text-zinc-600 rounded-full flex items-center justify-center hover:bg-zinc-300 transition-colors"
                             >
@@ -1822,7 +1844,7 @@ export default function App() {
                       )}
 
                       {!showDefinition && (
-                        <button 
+                        <button
                           onClick={checkAnswer}
                           className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
                         >
@@ -1850,7 +1872,7 @@ export default function App() {
                           onMouseUp={stopRecording}
                           onTouchStart={startRecording}
                           onTouchEnd={stopRecording}
-                          animate={{ 
+                          animate={{
                             scale: isRecording ? 1.2 : 1,
                             backgroundColor: isRecording ? '#ef4444' : '#4f46e5'
                           }}
@@ -1859,7 +1881,7 @@ export default function App() {
                           {isRecording ? <Loader2 className="w-10 h-10 animate-spin" /> : <Mic className="w-10 h-10" />}
                         </motion.button>
                         {isRecording && (
-                          <motion.div 
+                          <motion.div
                             initial={{ scale: 0.8, opacity: 0 }}
                             animate={{ scale: 1.5, opacity: 0.2 }}
                             transition={{ repeat: Infinity, duration: 1 }}
@@ -1879,7 +1901,7 @@ export default function App() {
                       )}
 
                       {showDefinition && pronunciationResult && (
-                        <motion.div 
+                        <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           className="w-full space-y-4 text-center"
@@ -1889,14 +1911,14 @@ export default function App() {
                             <div className="flex items-center justify-center gap-2">
                               <span className={cn(
                                 "text-5xl font-black",
-                                pronunciationResult.score >= 80 ? "text-green-500" : 
-                                pronunciationResult.score >= 60 ? "text-amber-500" : "text-red-500"
+                                pronunciationResult.score >= 80 ? "text-green-500" :
+                                  pronunciationResult.score >= 60 ? "text-amber-500" : "text-red-500"
                               )}>
                                 {pronunciationResult.score}%
                               </span>
                             </div>
                           </div>
-                          
+
                           <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
                             <p className="text-zinc-700 font-medium">{pronunciationResult.feedback}</p>
                           </div>
@@ -1913,7 +1935,7 @@ export default function App() {
               )}
 
               <div className="flex items-center gap-6">
-                <button 
+                <button
                   onClick={() => {
                     setReviewIndex((prev) => (prev > 0 ? prev - 1 : words.length - 1));
                     setShowDefinition(false);
@@ -1924,8 +1946,8 @@ export default function App() {
                 >
                   <ChevronLeft className="w-6 h-6 text-zinc-600" />
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => {
                     if (reviewIndex === words.length - 1) {
                       setView('library');
@@ -1951,14 +1973,14 @@ export default function App() {
       <AnimatePresence>
         {isManageCategoriesOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsManageCategoriesOpen(false)}
               className="absolute inset-0 bg-zinc-900/40 backdrop-blur-sm"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1966,7 +1988,7 @@ export default function App() {
             >
               <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
                 <h3 className="text-xl font-bold font-serif">管理分類</h3>
-                <button 
+                <button
                   onClick={() => setIsManageCategoriesOpen(false)}
                   className="p-2 text-zinc-400 hover:text-zinc-800 rounded-full hover:bg-zinc-100 transition-all"
                 >
@@ -1978,20 +2000,20 @@ export default function App() {
                   <div key={cat} className="flex items-center gap-2 group">
                     {editingCategory?.oldName === cat ? (
                       <div className="flex-1 flex items-center gap-2">
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           value={editingCategory.newName}
                           onChange={(e) => setEditingCategory({ ...editingCategory, newName: e.target.value })}
                           className="flex-1 px-3 py-1.5 rounded-lg border border-indigo-500 focus:outline-none text-sm"
                           autoFocus
                         />
-                        <button 
+                        <button
                           onClick={renameCategory}
                           className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-all"
                         >
                           <Check className="w-4 h-4" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => setEditingCategory(null)}
                           className="p-1.5 text-zinc-400 hover:bg-zinc-50 rounded-lg transition-all"
                         >
@@ -2003,13 +2025,13 @@ export default function App() {
                         <div className="flex-1 px-3 py-2 bg-zinc-50 rounded-xl text-zinc-700 font-medium text-sm">
                           {cat}
                         </div>
-                        <button 
+                        <button
                           onClick={() => setEditingCategory({ oldName: cat, newName: cat })}
                           className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => deleteCategory(cat)}
                           className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                         >
