@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type, Modality } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 // Use a function or safe access to prevent crash if process is undefined in browser
 export const getApiKey = () => {

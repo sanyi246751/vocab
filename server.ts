@@ -136,7 +136,7 @@ async function startServer() {
 
   app.get("/api/categories", (req, res) => {
     const { user_id = 1 } = req.query;
-    const categories = db.prepare("SELECT name FROM categories WHERE user_id = ? ORDER BY name ASC").all(user_id);
+    const categories = db.prepare("SELECT name FROM categories WHERE user_id = ? ORDER BY name ASC").all(user_id) as { name: string }[];
     res.json(categories.map(c => c.name));
   });
 
@@ -155,7 +155,7 @@ async function startServer() {
     const { newName, user_id = 1 } = req.body;
     const { oldName } = req.params;
     if (!newName) return res.status(400).json({ error: "New name required" });
-    
+
     db.transaction(() => {
       db.prepare("UPDATE categories SET name = ? WHERE name = ? AND user_id = ?").run(newName, oldName, user_id);
       db.prepare("UPDATE words SET category = ? WHERE category = ? AND user_id = ?").run(newName, oldName, user_id);
@@ -181,14 +181,14 @@ async function startServer() {
     } else {
       words = db.prepare("SELECT word, pos, phonetic, definition, example, category FROM words WHERE user_id = ? AND deleted_at IS NULL").all(user_id);
     }
-    
+
     // Simple CSV generation
     const header = "Word,POS,Phonetic,Definition,Example,Category\n";
     const rows = words.map(w => {
       const escape = (str: string) => `"${(str || '').replace(/"/g, '""')}"`;
       return `${escape(w.word)},${escape(w.pos)},${escape(w.phonetic)},${escape(w.definition)},${escape(w.example)},${escape(w.category)}`;
     }).join("\n");
-    
+
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=vocab_list.csv');
     res.send(header + rows);
@@ -204,13 +204,13 @@ async function startServer() {
     const insertMany = db.transaction((words, cat, uid) => {
       for (const w of words) {
         insert.run(
-          w.word, 
+          w.word,
           w.pos || '',
-          w.phonetic, 
-          w.definition, 
-          w.example, 
-          w.example_translation, 
-          JSON.stringify(w.example_segments || []), 
+          w.phonetic,
+          w.definition,
+          w.example,
+          w.example_translation,
+          JSON.stringify(w.example_segments || []),
           cat || '未分類',
           uid
         );
