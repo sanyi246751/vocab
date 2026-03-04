@@ -33,7 +33,7 @@ import {
   Mic
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { extractWordsFromMedia, speak, evaluatePronunciation, WordData, ExampleSegment } from './services/geminiService';
+import { extractWordsFromMedia, extractWordsFromText, speak, evaluatePronunciation, WordData, ExampleSegment } from './services/geminiService';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -154,6 +154,12 @@ export default function App() {
   const [difficultWords, setDifficultWords] = useState<SavedWord[]>([]);
   const [showDifficultOnly, setShowDifficultOnly] = useState(false);
   const [stats, setStats] = useState<{ total: number, byCategory: Record<string, number> }>({ total: 0, byCategory: {} });
+
+  const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('gemini_api_key') || '');
+
+  useEffect(() => {
+    localStorage.setItem('gemini_api_key', apiKey);
+  }, [apiKey]);
 
   // GAS Configuration
   const GAS_URL = "https://script.google.com/macros/s/AKfycbzT29iESU7OS7h1HlV9aBlzvK50UM9gcHmtklkLclNmeXDkH2i-cMJw-HuGZRabCFq6/exec"; // REPLACE THIS AFTER DEPLOYING GAS
@@ -415,10 +421,9 @@ export default function App() {
     if (!manualInput.trim()) return;
     setUploading(true);
     try {
-      const { extractWordsFromText } = await import('./services/geminiService');
-      const result = await extractWordsFromText(manualInput);
-      setExtractedWords(result.words);
-      setUploadCategory(result.suggestedCategory);
+      const data = await extractWordsFromText(manualInput, apiKey);
+      setExtractedWords(data.words);
+      setUploadCategory(data.suggestedCategory);
     } catch (error) {
       console.error("Failed to process manual input", error);
     } finally {
@@ -461,7 +466,7 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = async (event) => {
       const base64 = event.target?.result as string;
-      const result = await extractWordsFromMedia(base64, file.type);
+      const result = await extractWordsFromMedia(base64, file.type, apiKey);
       setExtractedWords(result.words);
       setUploadCategory(result.suggestedCategory);
       setUploading(false);
@@ -1333,6 +1338,36 @@ export default function App() {
                         >
                           <Plus className="w-4 h-4" /> 新增
                         </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5 text-indigo-600" />
+                      Gemini AI 設定
+                    </h3>
+                    <div className="space-y-4">
+                      <p className="text-sm text-zinc-500">
+                        輸入您的 Gemini API Key 以啟用 AI 辨識功能。
+                        Key 會儲存在瀏覽器本地。
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          placeholder="在此輸入 API Key..."
+                          value={apiKey}
+                          onChange={(e) => setApiKey(e.target.value)}
+                          className="flex-1 px-4 py-2 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono"
+                        />
+                        {apiKey && (
+                          <button
+                            onClick={() => setApiKey('')}
+                            className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                          >
+                            清除
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

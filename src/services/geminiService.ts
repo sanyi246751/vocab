@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
 // Use a function or safe access to prevent crash if process is undefined in browser
-const getApiKey = () => {
+export const getApiKey = () => {
   try {
     return (process.env.GEMINI_API_KEY) || "";
   } catch {
@@ -10,8 +10,9 @@ const getApiKey = () => {
 };
 
 // Initialize inside functions to avoid top-level issues
-function getAI() {
-  return new GoogleGenAI({ apiKey: getApiKey() });
+function getAI(customApiKey?: string) {
+  const key = customApiKey || getApiKey();
+  return new GoogleGenAI({ apiKey: key });
 }
 
 export interface ExampleSegment {
@@ -34,8 +35,8 @@ export interface ExtractionResult {
   suggestedCategory: string;
 }
 
-export async function extractWordsFromMedia(base64Data: string, mimeType: string): Promise<ExtractionResult> {
-  const response = await getAI().models.generateContent({
+export async function extractWordsFromMedia(base64Data: string, mimeType: string, customApiKey?: string): Promise<ExtractionResult> {
+  const response = await getAI(customApiKey).models.generateContent({
     model: "gemini-3-flash-preview",
     contents: [
       {
@@ -98,16 +99,16 @@ export async function extractWordsFromMedia(base64Data: string, mimeType: string
   }
 }
 
-export async function extractWordsFromText(text: string): Promise<ExtractionResult> {
-  const response = await getAI().models.generateContent({
+export async function extractWordsFromText(text: string, customApiKey?: string): Promise<ExtractionResult> {
+  const response = await getAI(customApiKey).models.generateContent({
     model: "gemini-3-flash-preview",
     contents: [
       {
         parts: [
           {
-            text: `Extract English words from the following text, providing their part of speech (pos, e.g., n., v., adj.), phonetic symbols (KK音標, wrapped in []), definitions (in Traditional Chinese), and example sentences with their Traditional Chinese translations. For each example sentence, also provide a mapping of English words/phrases to their corresponding Traditional Chinese translations as an array of segments. Ensure segments capture meaningful phrases or idioms if present. Return the data as a JSON object with keys: words (array of objects with word, pos, phonetic, definition, example, example_translation, example_segments) and suggestedCategory (string). Each segment in example_segments should have 'en' and 'zh' keys.
+            text: `Extract English words from the following text, providing their part of speech(pos, e.g., n., v., adj.), phonetic symbols(KK音標, wrapped in []), definitions(in Traditional Chinese), and example sentences with their Traditional Chinese translations.For each example sentence, also provide a mapping of English words / phrases to their corresponding Traditional Chinese translations as an array of segments.Ensure segments capture meaningful phrases or idioms if present.Return the data as a JSON object with keys: words(array of objects with word, pos, phonetic, definition, example, example_translation, example_segments) and suggestedCategory(string).Each segment in example_segments should have 'en' and 'zh' keys.
 
-Text: ${text}`,
+  Text: ${text} `,
           },
         ],
       },
@@ -173,7 +174,7 @@ export async function evaluatePronunciation(audioBase64: string, targetWord: str
           {
             text: `Evaluate the pronunciation of the word "${targetWord}" in the provided audio. 
             Return a JSON object with:
-            - score: a number from 0 to 100 representing accuracy.
+- score: a number from 0 to 100 representing accuracy.
             - feedback: a short string in Traditional Chinese explaining how to improve or confirming it's correct.`,
           },
         ],
