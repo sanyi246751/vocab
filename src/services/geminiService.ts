@@ -56,7 +56,6 @@ const extractionSchema = {
             },
           },
         },
-        required: ["word", "pos", "phonetic", "definition", "example", "example_translation", "example_segments"],
       },
     },
     suggestedCategory: { type: SchemaType.STRING },
@@ -91,19 +90,16 @@ export async function extractWordsFromMedia(base64WithHeader: string, mimeType: 
     const base64Data = base64WithHeader.includes(',') ? base64WithHeader.split(',')[1] : base64WithHeader;
     const model = getModel(customApiKey, extractionSchema);
 
-    const prompt = `你是一個專業的英文老師。請辨識並提取圖片中所有的英文單字，並為每個單字提供以下資訊：
-1. 詞性 (pos, 例如 n., v., adj.)
-2. KK 音標 (phonetic, 置於 [] 中)
-3. 中文定義 (definition, 使用繁體中文)
-4. 例句 (example)
-5. 例句翻譯 (example_translation, 使用繁體中文)
-6. 例句分段 (example_segments, 將例句切分為有意義的詞組，每個詞組包含 'en' 英文與 'zh' 中文對應)
+    const prompt = `你是一個溫柔的國小英文老師。請辨識並提取圖片中的英文單字。
+即使圖片不清晰，也請嘗試抓取主要的英文單字。如果圖片中只有單字而沒有詳細資訊（如音標、定義、例句），請你根據知識「自動補齊」這些內容。
 
-請特別注意：
-- 如果圖片包含很多字，請盡可能全部提取。
-- 嚴格遵守提供的 JSON 格式回傳。
-- 回傳格式必須是一個 JSON 對象，包含 'words' 陣列與 'suggestedCategory' 字串。
-- 如無法確定分類，'suggestedCategory' 請回傳 '一般單字'。`;
+方針：
+1. 適合對象：國小學生。文字描述要簡單易懂。
+2. 繁體中文：所有定義與翻譯請使用簡單的「繁體中文」。
+3. 簡單例句：請編寫非常生活的簡單例句（例如：I have an apple.）。
+4. 自動補齊：如果圖片只拍到單字，請務必自行提供詞性(pos)、KK音標(phonetic,置於[]中)、定義、例句及分段。
+
+回傳格式必須是一個 JSON 物件，包含 'words' 陣列與 'suggestedCategory' 字串。`;
 
     const result = await model.generateContent([
       {
@@ -117,6 +113,7 @@ export async function extractWordsFromMedia(base64WithHeader: string, mimeType: 
 
     const response = await result.response;
     const text = response.text();
+    console.log("Gemini Media Raw Response:", text);
 
     // Clean JSON string if LLM includes markdown backticks
     const cleanJson = text.replace(/```json\n?|\n?```/g, "").trim();
@@ -130,7 +127,12 @@ export async function extractWordsFromMedia(base64WithHeader: string, mimeType: 
 export async function extractWordsFromText(text: string, customApiKey?: string): Promise<ExtractionResult> {
   try {
     const model = getModel(customApiKey, extractionSchema);
-    const prompt = `你是一個專業的英文老師。請從以下文字中提取所有英文單字，並為每個單字提供詞性、KK音標、繁體中文定義、例句及其翻譯，以及例句分段資訊：
+    const prompt = `你是一個溫柔的國小英文老師。請從以下文字中提取英文單字。
+如果提供的內容只有單字，請「自動補齊」適合國小生程度的詞性、KK音標、繁體中文定義、簡單例句及其翻譯。
+
+教學方針：
+- 內容適合「國小學生」。
+- 例句極簡且生活化。
 
 文字內容：
 ${text}
