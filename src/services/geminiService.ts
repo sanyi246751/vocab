@@ -91,7 +91,19 @@ export async function extractWordsFromMedia(base64WithHeader: string, mimeType: 
     const base64Data = base64WithHeader.includes(',') ? base64WithHeader.split(',')[1] : base64WithHeader;
     const model = getModel(customApiKey, extractionSchema);
 
-    const prompt = "Extract all English words, their part of speech (pos, e.g., n., v., adj.), phonetic symbols (KK音標, wrapped in []), definitions (in Traditional Chinese), and example sentences with their Traditional Chinese translations. For each example sentence, also provide a mapping of English words/phrases to their corresponding Traditional Chinese translations as an array of segments. Ensure segments capture meaningful phrases or idioms if present. Return the data as a JSON object with keys: words and suggestedCategory.";
+    const prompt = `你是一個專業的英文老師。請辨識並提取圖片中所有的英文單字，並為每個單字提供以下資訊：
+1. 詞性 (pos, 例如 n., v., adj.)
+2. KK 音標 (phonetic, 置於 [] 中)
+3. 中文定義 (definition, 使用繁體中文)
+4. 例句 (example)
+5. 例句翻譯 (example_translation, 使用繁體中文)
+6. 例句分段 (example_segments, 將例句切分為有意義的詞組，每個詞組包含 'en' 英文與 'zh' 中文對應)
+
+請特別注意：
+- 如果圖片包含很多字，請盡可能全部提取。
+- 嚴格遵守提供的 JSON 格式回傳。
+- 回傳格式必須是一個 JSON 對象，包含 'words' 陣列與 'suggestedCategory' 字串。
+- 如無法確定分類，'suggestedCategory' 請回傳 '一般單字'。`;
 
     const result = await model.generateContent([
       {
@@ -104,7 +116,11 @@ export async function extractWordsFromMedia(base64WithHeader: string, mimeType: 
     ]);
 
     const response = await result.response;
-    return JSON.parse(response.text() || '{"words":[], "suggestedCategory":""}');
+    const text = response.text();
+
+    // Clean JSON string if LLM includes markdown backticks
+    const cleanJson = text.replace(/```json\n?|\n?```/g, "").trim();
+    return JSON.parse(cleanJson || '{"words":[], "suggestedCategory":""}');
   } catch (e) {
     console.error("Gemini Media Extraction Error:", e);
     return { words: [], suggestedCategory: "" };
@@ -114,13 +130,18 @@ export async function extractWordsFromMedia(base64WithHeader: string, mimeType: 
 export async function extractWordsFromText(text: string, customApiKey?: string): Promise<ExtractionResult> {
   try {
     const model = getModel(customApiKey, extractionSchema);
-    const prompt = `Extract English words from the following text, providing their part of speech(pos, e.g., n., v., adj.), phonetic symbols(KK音標, wrapped in []), definitions(in Traditional Chinese), and example sentences with their Traditional Chinese translations. For each example sentence, also provide a mapping of English words / phrases to their corresponding Traditional Chinese translations as an array of segments. Ensure segments capture meaningful phrases or idioms if present. Return the data as a JSON object with keys: words and suggestedCategory.
+    const prompt = `你是一個專業的英文老師。請從以下文字中提取所有英文單字，並為每個單字提供詞性、KK音標、繁體中文定義、例句及其翻譯，以及例句分段資訊：
 
-Text: ${text}`;
+文字內容：
+${text}
+
+回傳格式必須是 JSON 物件，包含 'words' 陣列與 'suggestedCategory' 字串。`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    return JSON.parse(response.text() || '{"words":[], "suggestedCategory":""}');
+    const resText = response.text();
+    const cleanJson = resText.replace(/```json\n?|\n?```/g, "").trim();
+    return JSON.parse(cleanJson || '{"words":[], "suggestedCategory":""}');
   } catch (e) {
     console.error("Gemini Text Extraction Error:", e);
     return { words: [], suggestedCategory: "" };
