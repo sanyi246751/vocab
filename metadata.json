@@ -1,0 +1,7 @@
+{
+  "name": "Remix: VocabMaster AI",
+  "description": "An AI-powered English vocabulary learning tool that extracts words from images/PDFs and provides review features with TTS.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
