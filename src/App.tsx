@@ -451,13 +451,22 @@ export default function App() {
 
   const handleManualInput = async () => {
     if (!manualInput.trim()) return;
+    if (!apiKey) {
+      alert("請先在「設定」頁面輸入 Gemini API Key 才可使用 AI 辨識功能。");
+      return;
+    }
     setUploading(true);
     try {
       const data = await extractWordsFromText(manualInput, apiKey);
-      setExtractedWords(data.words);
-      setUploadCategory(data.suggestedCategory);
+      if (data && data.words && data.words.length > 0) {
+        setExtractedWords(data.words);
+        setUploadCategory(data.suggestedCategory);
+      } else {
+        alert("AI 未能從文字中辨識出任何單字。");
+      }
     } catch (error) {
       console.error("Failed to process manual input", error);
+      alert("文字辨識過程發生錯誤。");
     } finally {
       setUploading(false);
     }
@@ -497,15 +506,23 @@ export default function App() {
     setUploading(true);
     const reader = new FileReader();
     reader.onload = async (event) => {
+      if (!apiKey) {
+        alert("請先在「設定」頁面輸入 Gemini API Key 才可使用 AI 辨識功能。");
+        setUploading(false);
+        return;
+      }
       try {
         const base64 = event.target?.result as string;
         const result = await extractWordsFromMedia(base64, file.type, apiKey);
-        if (result && result.words) {
+        if (result && result.words && result.words.length > 0) {
           setExtractedWords(result.words);
           setUploadCategory(result.suggestedCategory);
+        } else {
+          alert("AI 未能辨識出任何單字，請確保圖片清晰且包含英文內容。");
         }
       } catch (error) {
         console.error("Failed to process file upload", error);
+        alert("辨識過程發生錯誤，請檢查您的 API Key 是否正確且額度充足。");
       } finally {
         setUploading(false);
       }
