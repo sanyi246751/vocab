@@ -122,7 +122,11 @@ export default function App() {
   const [words, setWords] = useState<SavedWord[]>([]);
   const [trashWords, setTrashWords] = useState<SavedWord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('vocab_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [initialLoading, setInitialLoading] = useState(true);
   const [newUsername, setNewUsername] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('全部');
@@ -160,6 +164,12 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('gemini_api_key', apiKey);
   }, [apiKey]);
+
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('vocab_user', JSON.stringify(currentUser));
+    }
+  }, [currentUser]);
 
   // GAS Configuration
   const GAS_URL = "https://script.google.com/macros/s/AKfycbzT29iESU7OS7h1HlV9aBlzvK50UM9gcHmtklkLclNmeXDkH2i-cMJw-HuGZRabCFq6/exec"; // REPLACE THIS AFTER DEPLOYING GAS
@@ -228,6 +238,8 @@ export default function App() {
       }
     } catch (error) {
       console.error("Failed to fetch users", error);
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -667,6 +679,46 @@ export default function App() {
       setGameEndTime(Date.now());
     }
   }, [matchedIds, gamePairs]);
+
+  if (initialLoading) {
+    return (
+      <div className="fixed inset-0 bg-zinc-50 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-indigo-500/20 blur-3xl animate-pulse" />
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="flex items-center justify-center"
+          >
+            <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl border border-white relative">
+              <BookOpen className="w-16 h-16 text-indigo-600 animate-bounce" />
+            </div>
+          </motion.div>
+        </div>
+        <motion.h1
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="text-3xl font-black text-zinc-900 mb-2 italic tracking-tight"
+        >
+          單字大師 <span className="text-indigo-600">AI</span>
+        </motion.h1>
+        <motion.p
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="text-zinc-500 font-medium mb-8"
+        >
+          正從 Google Sheets 載入您的資料...
+        </motion.p>
+        <div className="flex items-center gap-2">
+          <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
+          <span className="text-sm font-bold text-indigo-600/60 uppercase tracking-widest">Initial Sync</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50 flex flex-col">
