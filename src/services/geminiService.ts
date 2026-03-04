@@ -1,6 +1,15 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+// Use a function or safe access to prevent crash if process is undefined in browser
+const getApiKey = () => {
+  try {
+    return (process.env.GEMINI_API_KEY) || "";
+  } catch {
+    return "";
+  }
+};
+
+const ai = new GoogleGenAI({ apiKey: getApiKey() });
 
 export interface ExampleSegment {
   en: string;
