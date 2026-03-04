@@ -1,7 +1,4 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
-import Tesseract from 'tesseract.js';
-
-
 // Use a function or safe access to prevent crash if process is undefined in browser
 export const getApiKey = () => {
   try {
@@ -79,7 +76,7 @@ function getModel(customApiKey?: string, schema?: any) {
   const key = customApiKey || getApiKey();
   const genAI = new GoogleGenerativeAI(key);
   return genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-3-flash-preview",
     generationConfig: schema ? {
       responseMimeType: "application/json",
       responseSchema: schema,
@@ -89,29 +86,39 @@ function getModel(customApiKey?: string, schema?: any) {
 
 export async function extractWordsFromMedia(base64WithHeader: string, mimeType: string, customApiKey?: string): Promise<ExtractionResult> {
   try {
-    console.log("Starting Tesseract OCR...");
+    const base64Data = base64WithHeader.includes(',') ? base64WithHeader.split(',')[1] : base64WithHeader;
+    const model = getModel(customApiKey, extractionSchema);
 
-    // Tesseract handles base64 URIs cleanly
-    const { data: { text } } = await Tesseract.recognize(
-      base64WithHeader,
-      'eng',
+    const prompt = `你是一個溫柔的國小英文老師。請利用你的多模式理解能力，精準辨識並提取圖片中的英文單字。
+如果圖片中只有單字而沒有詳細資訊（如音標、定義、例句），請你根據知識「自動補齊」這些內容。
+
+方針：
+1. 適合對象：國小學生。文字描述要簡單易懂。
+2. 繁體中文：所有定義與翻譯請使用簡單的「繁體中文」。
+3. 簡單例句：請編寫非常生活的簡單例句（例如：I have an apple.）。
+4. 自動補齊：如果圖片只拍到單字，請務必自行提供詞性(pos)、KK音標(phonetic,置於[]中)、定義、例句及分段。
+
+回傳格式必須是一個 JSON 物件，包含 'words' 陣列與 'suggestedCategory' 字串。`;
+
+    const result = await model.generateContent([
       {
-        logger: m => console.log(m) // Optional: log progress
-      }
-    );
+        inlineData: {
+          data: base64Data,
+          mimeType: mimeType,
+        },
+      },
+      { text: prompt },
+    ]);
 
-    console.log("Tesseract OCR Extracted Text:", text);
+    const response = await result.response;
+    const text = response.text();
+    console.log("Gemini Media Raw Response:", text);
 
-    if (!text || text.trim().length === 0) {
-      console.warn("Tesseract did not find any text.");
-      return { words: [], suggestedCategory: "" };
-    }
-
-    // Pass the perfectly extracted text to Gemini for standard processing
-    return await extractWordsFromText(text, customApiKey);
-
+    // Clean JSON string if LLM includes markdown backticks
+    const cleanJson = text.replace(/```json\n?|\n?```/g, "").trim();
+    return JSON.parse(cleanJson || '{"words":[], "suggestedCategory":""}');
   } catch (e) {
-    console.error("Tesseract/Gemini Extraction Error:", e);
+    console.error("Gemini Media Extraction Error:", e);
     return { words: [], suggestedCategory: "" };
   }
 }
