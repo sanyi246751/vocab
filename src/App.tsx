@@ -660,7 +660,7 @@ export default function App() {
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
               <BookOpen className="text-white w-5 h-5" />
             </div>
-            <h1 className="font-serif text-xl font-bold tracking-tight hidden sm:block">VocabMaster AI</h1>
+            <h1 className="font-serif text-xl font-bold tracking-tight hidden sm:block">單字大師 AI</h1>
           </div>
 
           {currentUser && (
@@ -788,7 +788,7 @@ export default function App() {
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder="新增分類..."
+                        placeholder="搜尋或新增分類..."
                         value={newCategoryName}
                         onChange={(e) => setNewCategoryName(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && addCategory()}
@@ -805,13 +805,13 @@ export default function App() {
                 </div>
 
                 <div className="bg-indigo-600 rounded-2xl p-5 text-white shadow-lg shadow-indigo-200">
-                  <h4 className="font-bold mb-1">學習進度</h4>
-                  <p className="text-indigo-100 text-xs mb-4">今天你已經複習了 0 個單字</p>
+                  <h4 className="font-bold mb-1">今日進度</h4>
+                  <p className="text-indigo-100 text-xs mb-4">累積複習單字提升記憶力！</p>
                   <button
                     onClick={() => setView('review-setup')}
                     className="w-full bg-white text-indigo-600 py-2 rounded-xl text-sm font-bold hover:bg-indigo-50 transition-colors"
                   >
-                    開始複習
+                    進入複習
                   </button>
                 </div>
               </aside>
@@ -1030,8 +1030,8 @@ export default function App() {
               className="max-w-2xl mx-auto space-y-6"
             >
               <div className="text-center space-y-2">
-                <h2 className="text-3xl font-serif font-bold">新增單字</h2>
-                <p className="text-zinc-500">選擇適合的方式新增單字，AI 將自動為你整理資訊。</p>
+                <h2 className="text-3xl font-serif font-bold">新增學習材料</h2>
+                <p className="text-zinc-500">透過影像、文字或相機，讓 AI 幫您自動整理單字例句。</p>
               </div>
 
               <div className="flex justify-center gap-2">
@@ -1149,7 +1149,7 @@ export default function App() {
               ) : (
                 <div className="space-y-6">
                   <div className="bg-white p-6 rounded-2xl border border-zinc-200 space-y-4">
-                    <h3 className="font-bold text-zinc-900">設定分類</h3>
+                    <h3 className="font-bold text-zinc-900">推薦分類</h3>
                     <div className="flex flex-wrap gap-2">
                       {categories.map(cat => (
                         <button
@@ -1238,7 +1238,7 @@ export default function App() {
                 </div>
                 <div>
                   <h2 className="text-3xl font-serif font-bold">系統設定</h2>
-                  <p className="text-zinc-500">管理你的學習環境、分類與使用者帳號。</p>
+                  <p className="text-zinc-500">管理您的學習環境、分類與使用者帳號。</p>
                 </div>
               </div>
 
