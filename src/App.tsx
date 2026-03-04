@@ -52,7 +52,6 @@ interface SavedWord extends WordData {
 interface User {
   id: number;
   username: string;
-  avatar?: string;
 }
 
 const InteractiveExample = ({ segments, fullText, translation }: { segments: ExampleSegment[], fullText?: string, translation?: string }) => {
@@ -159,11 +158,20 @@ export default function App() {
   const [showDifficultOnly, setShowDifficultOnly] = useState(false);
   const [stats, setStats] = useState<{ total: number, byCategory: Record<string, number> }>({ total: 0, byCategory: {} });
 
-  const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('gemini_api_key') || '');
+  const [apiKey, setApiKey] = useState<string>('');
 
   useEffect(() => {
-    localStorage.setItem('gemini_api_key', apiKey);
-  }, [apiKey]);
+    if (currentUser) {
+      const savedKey = localStorage.getItem(`gemini_api_key_${currentUser.id}`) || '';
+      setApiKey(savedKey);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser && apiKey !== undefined) {
+      localStorage.setItem(`gemini_api_key_${currentUser.id}`, apiKey);
+    }
+  }, [apiKey, currentUser]);
 
   useEffect(() => {
     if (currentUser) {
@@ -734,12 +742,9 @@ export default function App() {
 
           {currentUser && (
             <div className="flex items-center gap-2 pl-4 border-l border-zinc-200">
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.username}
-                className="w-8 h-8 rounded-full border border-zinc-200 object-cover"
-                referrerPolicy="no-referrer"
-              />
+              <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center border border-indigo-200">
+                <span className="text-indigo-600 text-[10px] font-bold uppercase">{currentUser.username.substring(0, 2)}</span>
+              </div>
               <span className="text-sm font-medium text-zinc-600 hidden md:block">{currentUser.username}</span>
             </div>
           )}
@@ -1375,12 +1380,15 @@ export default function App() {
                             )}
                           >
                             <div className="flex items-center gap-3">
-                              <img
-                                src={user.avatar}
-                                alt={user.username}
-                                className="w-8 h-8 rounded-full border border-zinc-200 object-cover"
-                                referrerPolicy="no-referrer"
-                              />
+                              <div className={cn(
+                                "w-8 h-8 rounded-full flex items-center justify-center border transition-all",
+                                currentUser?.id === user.id ? "bg-indigo-600 border-indigo-600" : "bg-zinc-100 border-zinc-200"
+                              )}>
+                                <span className={cn(
+                                  "text-[10px] font-bold uppercase",
+                                  currentUser?.id === user.id ? "text-white" : "text-zinc-500"
+                                )}>{user.username.substring(0, 2)}</span>
+                              </div>
                               <span className="font-medium">{user.username}</span>
                             </div>
                             {currentUser?.id === user.id && <CheckCircle2 className="w-4 h-4" />}

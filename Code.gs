@@ -198,10 +198,9 @@ function setupSheets() {
 function addUser(ss, body) {
   const sheet = ss.getSheetByName('users');
   const id = sheet.getLastRow(); // Simple ID
-  const avatar = body.avatar || `https://picsum.photos/seed/${body.username}/100/100`;
   const createdAt = new Date().toISOString();
-  sheet.appendRow([id, body.username, avatar, createdAt]);
-  return { id, username: body.username, avatar, created_at: createdAt };
+  sheet.appendRow([id, body.username, "", createdAt]);
+  return { id, username: body.username, created_at: createdAt };
 }
 
 // Action: getWords
