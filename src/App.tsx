@@ -497,11 +497,18 @@ export default function App() {
     setUploading(true);
     const reader = new FileReader();
     reader.onload = async (event) => {
-      const base64 = event.target?.result as string;
-      const result = await extractWordsFromMedia(base64, file.type, apiKey);
-      setExtractedWords(result.words);
-      setUploadCategory(result.suggestedCategory);
-      setUploading(false);
+      try {
+        const base64 = event.target?.result as string;
+        const result = await extractWordsFromMedia(base64, file.type, apiKey);
+        if (result && result.words) {
+          setExtractedWords(result.words);
+          setUploadCategory(result.suggestedCategory);
+        }
+      } catch (error) {
+        console.error("Failed to process file upload", error);
+      } finally {
+        setUploading(false);
+      }
     };
     reader.readAsDataURL(file);
   };
