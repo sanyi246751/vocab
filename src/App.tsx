@@ -241,30 +241,22 @@ export default function App() {
     setInitialLoading(true);
     try {
       const data = await gasFetch('getUsers');
-      console.log("Fetched users:", data);
 
       const usersData = Array.isArray(data) ? data : [];
       setUsers(usersData);
 
-      const savedUserId = localStorage.getItem('vocab_user_id');
       if (usersData.length > 0) {
-        let userToSet = usersData[0];
-        if (savedUserId) {
-          const found = usersData.find((u: User) => u.id === Number(savedUserId));
-          if (found) userToSet = found;
-        }
-        setCurrentUser(userToSet);
+        // 依照要求：啟動時預設選擇第一個使用者
+        setCurrentUser(usersData[0]);
+        setView('library');
       } else {
-        // 設定為 null 並切換視圖
         setCurrentUser(null);
         setView('settings');
       }
     } catch (error) {
       console.error("Failed to fetch users:", error);
-      // 即便錯誤，也要讓使用者能進去設定頁改 GAS_URL
       setView('settings');
     } finally {
-      // 確保 1.5 秒後一定結束動畫，避免網路卡住時感官不佳
       setTimeout(() => setInitialLoading(false), 500);
     }
   };
@@ -1433,7 +1425,10 @@ export default function App() {
                         {users.map(user => (
                           <button
                             key={user.id}
-                            onClick={() => setCurrentUser(user)}
+                            onClick={() => {
+                              setCurrentUser(user);
+                              setView('library'); // 選完帳號後自動回單字庫
+                            }}
                             className={cn(
                               "flex items-center justify-between px-4 py-3 rounded-2xl border transition-all",
                               currentUser?.id === user.id
