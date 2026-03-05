@@ -237,19 +237,25 @@ export default function App() {
   const fetchUsers = async () => {
     try {
       const data = await gasFetch('getUsers');
-      setUsers(data);
-      
-      const savedUserId = localStorage.getItem('vocab_user_id');
-      if (data.length > 0) {
-        let userToSet = data[0];
-        if (savedUserId) {
-          const found = data.find((u: User) => u.id === Number(savedUserId));
-          if (found) userToSet = found;
+      if (Array.isArray(data)) {
+        setUsers(data);
+        const savedUserId = localStorage.getItem('vocab_user_id');
+        if (data.length > 0) {
+          let userToSet = data[0];
+          if (savedUserId) {
+            const found = data.find((u: User) => u.id === Number(savedUserId));
+            if (found) userToSet = found;
+          }
+          setCurrentUser(userToSet);
+        } else {
+          // 如果資料庫完全沒人，導向設定頁面新增使用者
+          setCurrentUser(null);
+          setView('settings');
         }
-        setCurrentUser(userToSet);
       }
     } catch (error) {
       console.error("Failed to fetch users", error);
+      alert("無法連線至雲端資料庫，請檢查 GAS URL 是否正確。");
     } finally {
       setInitialLoading(false);
     }
@@ -818,7 +824,27 @@ export default function App() {
         </nav>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full p-6">
+      {!currentUser && !initialLoading && view !== 'settings' && (
+        <div className="flex-1 flex flex-col items-center justify-center p-10 text-center space-y-6">
+          <div className="w-20 h-20 bg-indigo-100 rounded-[2.5rem] flex items-center justify-center">
+            <Settings className="w-10 h-10 text-indigo-600" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-zinc-900">歡迎使用單字大師 AI</h2>
+            <p className="text-zinc-500 mt-2 max-w-sm">
+              目前系統中還沒有使用者，或者您尚未選擇身分。<br />請先前往設定頁面新增您的第一個帳號。
+            </p>
+          </div>
+          <button
+            onClick={() => setView('settings')}
+            className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+          >
+            前往設定頁面
+          </button>
+        </div>
+      )}
+
+      <main className={cn("flex-1 max-w-7xl mx-auto w-full p-6", !currentUser && view !== 'settings' && "hidden")}>
         <AnimatePresence mode="wait">
           {view === 'library' && (
             <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-8">
