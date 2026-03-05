@@ -121,10 +121,7 @@ export default function App() {
   const [words, setWords] = useState<SavedWord[]>([]);
   const [trashWords, setTrashWords] = useState<SavedWord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('vocab_user');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [newUsername, setNewUsername] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
@@ -175,7 +172,7 @@ export default function App() {
 
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem('vocab_user', JSON.stringify(currentUser));
+      localStorage.setItem('vocab_user_id', String(currentUser.id));
     }
   }, [currentUser]);
 
@@ -241,8 +238,15 @@ export default function App() {
     try {
       const data = await gasFetch('getUsers');
       setUsers(data);
-      if (data.length > 0 && !currentUser) {
-        setCurrentUser(data[0]);
+      
+      const savedUserId = localStorage.getItem('vocab_user_id');
+      if (data.length > 0) {
+        let userToSet = data[0];
+        if (savedUserId) {
+          const found = data.find((u: User) => u.id === Number(savedUserId));
+          if (found) userToSet = found;
+        }
+        setCurrentUser(userToSet);
       }
     } catch (error) {
       console.error("Failed to fetch users", error);
