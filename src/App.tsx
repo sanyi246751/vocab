@@ -173,8 +173,11 @@ export default function App() {
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('vocab_user_id', String(currentUser.id));
+    } else if (!initialLoading && view !== 'settings') {
+      // 偵錯防禦：如果沒人登入且不在載入中，強制跳回設定
+      setView('settings');
     }
-  }, [currentUser]);
+  }, [currentUser, initialLoading, view]);
 
   // GAS Configuration
   const GAS_URL = "https://script.google.com/macros/s/AKfycbzT29iESU7OS7h1HlV9aBlzvK50UM9gcHmtklkLclNmeXDkH2i-cMJw-HuGZRabCFq6/exec"; // REPLACE THIS AFTER DEPLOYING GAS
@@ -235,29 +238,34 @@ export default function App() {
   }, [selectedCategory, currentUser]);
 
   const fetchUsers = async () => {
+    setInitialLoading(true);
     try {
       const data = await gasFetch('getUsers');
-      if (Array.isArray(data)) {
-        setUsers(data);
-        const savedUserId = localStorage.getItem('vocab_user_id');
-        if (data.length > 0) {
-          let userToSet = data[0];
-          if (savedUserId) {
-            const found = data.find((u: User) => u.id === Number(savedUserId));
-            if (found) userToSet = found;
-          }
-          setCurrentUser(userToSet);
-        } else {
-          // 如果資料庫完全沒人，導向設定頁面新增使用者
-          setCurrentUser(null);
-          setView('settings');
+      console.log("Fetched users:", data);
+
+      const usersData = Array.isArray(data) ? data : [];
+      setUsers(usersData);
+
+      const savedUserId = localStorage.getItem('vocab_user_id');
+      if (usersData.length > 0) {
+        let userToSet = usersData[0];
+        if (savedUserId) {
+          const found = usersData.find((u: User) => u.id === Number(savedUserId));
+          if (found) userToSet = found;
         }
+        setCurrentUser(userToSet);
+      } else {
+        // 設定為 null 並切換視圖
+        setCurrentUser(null);
+        setView('settings');
       }
     } catch (error) {
-      console.error("Failed to fetch users", error);
-      alert("無法連線至雲端資料庫，請檢查 GAS URL 是否正確。");
+      console.error("Failed to fetch users:", error);
+      // 即便錯誤，也要讓使用者能進去設定頁改 GAS_URL
+      setView('settings');
     } finally {
-      setInitialLoading(false);
+      // 確保 1.5 秒後一定結束動畫，避免網路卡住時感官不佳
+      setTimeout(() => setInitialLoading(false), 500);
     }
   };
 
