@@ -189,6 +189,8 @@ export default function App() {
   }
 
   const gasFetch = async (action: string, options: GasFetchOptions = {}) => {
+    // If we're on localhost and not explicitly wanting GAS, we can bridge to local API
+    // However, to keep it simple and follow the user's GAS-centric code, let's just make it robust.
     const isPost = options.method === 'POST' || options.method === 'PUT' || options.method === 'PATCH' || options.method === 'DELETE';
     const paramsObj: Record<string, string> = {};
     if (options.params) {
@@ -201,16 +203,26 @@ export default function App() {
 
     const url = `${GAS_URL}?${params.toString()}`;
 
-    if (isPost) {
-      const res = await fetch(url, {
-        method: 'POST',
+    try {
+      const fetchOptions: RequestInit = {
+        method: isPost ? 'POST' : 'GET',
         body: options.body ? JSON.stringify(options.body) : undefined,
-      });
-      return await res.json();
-    } else {
-      const res = await fetch(url);
+      };
+
+      const res = await fetch(url, fetchOptions);
       if (action === 'export') return res.blob();
-      return await res.json();
+
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return await res.json();
+      } else {
+        const text = await res.text();
+        console.warn("GAS returned non-JSON response:", text.substring(0, 100));
+        return { error: "Invalid JSON response", text: text.substring(0, 500) };
+      }
+    } catch (error) {
+      console.error(`gasFetch error (${action}):`, error);
+      return { error: String(error) };
     }
   };
 
@@ -280,7 +292,11 @@ export default function App() {
     if (!currentUser) return;
     try {
       const data = await gasFetch('getStats', { params: { user_id: currentUser.id } });
-      setStats(data);
+      if (data && typeof data === 'object' && !Array.isArray(data) && data.byCategory) {
+        setStats(data);
+      } else {
+        setStats({ total: 0, byCategory: {} });
+      }
     } catch (error) {
       console.error("Failed to fetch stats", error);
     }
@@ -290,7 +306,7 @@ export default function App() {
     if (!currentUser) return;
     try {
       const data = await gasFetch('getDifficultWords', { params: { user_id: currentUser.id } });
-      setDifficultWords(data);
+      setDifficultWords(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch difficult words", error);
     }
@@ -301,7 +317,7 @@ export default function App() {
     setLoading(true);
     try {
       const data = await gasFetch('getTrashWords', { params: { user_id: currentUser.id } });
-      setTrashWords(data);
+      setTrashWords(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch trash words", error);
     } finally {
@@ -435,11 +451,12 @@ export default function App() {
       const params: Record<string, any> = { user_id: currentUser.id };
       if (selectedCategory !== '全部') params.category = selectedCategory;
       const data = await gasFetch('getWords', { params });
-      setWords(data);
+      setWords(Array.isArray(data) ? data : []);
       // Clear selection when category changes
       setSelectedWordIds([]);
     } catch (error) {
       console.error("Failed to fetch words", error);
+      setWords([]);
     } finally {
       setLoading(false);
     }
@@ -503,9 +520,10 @@ export default function App() {
     if (!currentUser) return;
     try {
       const data = await gasFetch('getCategories', { params: { user_id: currentUser.id } });
-      setCategories(data);
+      setCategories(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch categories", error);
+      setCategories([]);
     }
   };
 
@@ -777,9 +795,9 @@ export default function App() {
           {currentUser && (
             <div className="flex items-center gap-2 pl-4 border-l border-zinc-200">
               <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center border border-indigo-200">
-                <span className="text-indigo-600 text-[10px] font-bold uppercase">{currentUser.username.substring(0, 2)}</span>
+                <span className="text-indigo-600 text-[10px] font-bold uppercase">{(currentUser.username || 'U').substring(0, 2)}</span>
               </div>
-              <span className="text-sm font-medium text-zinc-600 hidden md:block">{currentUser.username}</span>
+              <span className="text-sm font-medium text-zinc-600 hidden md:block">{currentUser.username || '未知名使用者'}</span>
             </div>
           )}
         </div>
@@ -1388,7 +1406,7 @@ export default function App() {
                           {['未分類', ...categories].map(cat => (
                             <div key={cat} className="flex justify-between items-center text-sm">
                               <span className="text-zinc-600">{cat}</span>
-                              <span className="font-bold text-zinc-900">{stats.byCategory[cat] || 0}</span>
+                              <span className="font-bold text-zinc-900">{stats.byCategory?.[cat] || 0}</span>
                             </div>
                           ))}
                         </div>
@@ -1444,9 +1462,9 @@ export default function App() {
                                 <span className={cn(
                                   "text-[10px] font-bold uppercase",
                                   currentUser?.id === user.id ? "text-white" : "text-zinc-500"
-                                )}>{user.username.substring(0, 2)}</span>
+                                )}>{(user.username || 'U').substring(0, 2)}</span>
                               </div>
-                              <span className="font-medium">{user.username}</span>
+                              <span className="font-medium">{user.username || '未知名使用者'}</span>
                             </div>
                             {currentUser?.id === user.id && <CheckCircle2 className="w-4 h-4" />}
                           </button>
